@@ -140,3 +140,61 @@ export interface WaitlistResult {
   client: PartyRef;
   service: ServiceRef;
 }
+
+export interface Admin {
+  id: string;
+  username: string;
+  email: string;
+}
+
+export interface PeriodStats {
+  count: number;
+  revenue: number;
+  avgTicket: number;
+}
+
+export interface DashboardSummary {
+  today: PeriodStats;
+  week: PeriodStats;
+  month: PeriodStats;
+  newClients: number;
+  recurringClients: number;
+  todayAppointments: Array<{
+    id: string;
+    time: string;
+    client: string;
+    service: string;
+    price: number | null;
+    status: AppointmentStatus;
+  }>;
+  topProcedures: Array<{ name: string; count: number; pct: number }>;
+}
+
+export interface ClientSummary {
+  id: string;
+  name: string;
+  whatsapp: string;
+  visits: number;
+  noShows: number;
+}
+
+export interface ClientDetail extends ClientSummary {
+  email: string | null;
+  cancellations: number;
+  total: number;
+  history: Array<{
+    id: string;
+    date: string;
+    startTime: string;
+    service: string;
+    price: number | null;
+    status: AppointmentStatus;
+  }>;
+}
+
+export interface UpdateAppointmentPayload {
+  date?: string;
+  startTime?: string;
+  status?: AppointmentStatus;
+  cancelReason?: string;
+}

@@ -24,3 +24,8 @@ export function formatHoursRange(weekly: WeeklyDay[]): string | null {
   if (!open) return null;
   return `${open.startTime} – ${open.endTime}`;
 }
+
+/** Só a primeira letra — evita o CSS `capitalize` maiusculizar cada palavra ("Quinta-Feira, 30 De Julho"). */
+export function capitalizeFirst(text: string): string {
+  return text.length ? text.charAt(0).toUpperCase() + text.slice(1) : text;
+}

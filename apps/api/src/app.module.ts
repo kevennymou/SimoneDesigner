@@ -6,6 +6,7 @@ import { AppointmentsModule } from './appointments/appointments.module';
 import { AuthModule } from './auth/auth.module';
 import { AvailabilityModule } from './availability/availability.module';
 import { ClientsModule } from './clients/clients.module';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { GalleryModule } from './gallery/gallery.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { ServicesModule } from './services/services.module';
@@ -28,6 +29,7 @@ import { WaitlistModule } from './waitlist/waitlist.module';
     ClientsModule,
     GalleryModule,
     TestimonialsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],
