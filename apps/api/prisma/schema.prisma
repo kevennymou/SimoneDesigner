@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AppointmentStatus {
+  PENDING // aguardando confirmação de presença
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum WaitlistStatus {
+  WAITING
+  NOTIFIED
+  CONVERTED
+  EXPIRED
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  email        String
+  createdAt    DateTime @default(now())
+}
+
+model Service {
+  id           String          @id @default(cuid())
+  name         String
+  durationMin  Int
+  price        Decimal?        @db.Decimal(10, 2) // null = "sob consulta"
+  active       Boolean         @default(true)
+  order        Int             @default(0)
+  appointments Appointment[]
+  waitlist     WaitlistEntry[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model Client {
+  id           String          @id @default(cuid())
+  name         String
+  whatsapp     String          @unique // dígitos normalizados, ex. 5583991110001
+  email        String?
+  notes        String?
+  appointments Appointment[]
+  waitlist     WaitlistEntry[]
+  createdAt    DateTime        @default(now())
+}
+
+model Appointment {
+  id             String            @id @default(cuid())
+  client         Client            @relation(fields: [clientId], references: [id])
+  clientId       String
+  service        Service           @relation(fields: [serviceId], references: [id])
+  serviceId      String
+  date           DateTime          @db.Date
+  startTime      String // "09:00"
+  endTime        String // calculado a partir da duração do serviço
+  priceAtBooking Decimal?          @db.Decimal(10, 2) // snapshot — preço pode mudar depois
+  status         AppointmentStatus @default(PENDING)
+  confirmToken   String?           @unique
+  confirmedAt    DateTime?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  source         String            @default("site") // site | admin
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([date, startTime])
+  @@index([date])
+}
+
+model WaitlistEntry {
+  id        String         @id @default(cuid())
+  client    Client         @relation(fields: [clientId], references: [id])
+  clientId  String
+  service   Service        @relation(fields: [serviceId], references: [id])
+  serviceId String
+  date      DateTime       @db.Date
+  time      String
+  status    WaitlistStatus @default(WAITING)
+  createdAt DateTime       @default(now())
+}
+
+model WeeklyAvailability {
+  id          String  @id @default(cuid())
+  weekday     Int     @unique // 0=domingo ... 6=sábado
+  isOpen      Boolean @default(false)
+  startTime   String? // "09:00"
+  endTime     String? // "18:00"
+  breakStart  String? // "12:00"
+  breakEnd    String? // "13:00"
+  slotMinutes Int     @default(30)
+}
+
+model BlockedDate {
+  id    String   @id @default(cuid())
+  date  DateTime @db.Date @unique
+  label String // "Feriado", "Folga", etc.
+}
+
+model NotificationLog {
+  id            String   @id @default(cuid())
+  appointmentId String?
+  type          String // confirmation_admin | confirmation_client | reminder_7d | reminder_1d | reminder_day | cancelled | rescheduled | waitlist_open
+  channel       String // email | whatsapp_link
+  sentAt        DateTime @default(now())
+  meta          Json?
+}
+
+model GalleryPhoto {
+  id           String   @id @default(cuid())
+  cloudinaryId String
+  url          String
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  author    String
+  text      String
+  rating    Int      @default(5)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Settings {
+  id           String  @id @default("singleton")
+  businessName String  @default("Simone Moura")
+  bio          String  @default("Designer de unhas em gel em João Pessoa. Realço a sua beleza a cada detalhe.")
+  whatsapp     String
+  instagram    String
+  address      String?
+  mapsUrl      String?
+  adminEmail   String
+}

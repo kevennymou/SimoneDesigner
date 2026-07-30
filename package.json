@@ -1,0 +1,16 @@
+{
+  "name": "simone-moura",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n web,api -c blue,magenta \"pnpm --filter web dev\" \"pnpm --filter api start:dev\"",
+    "dev:web": "pnpm --filter web dev",
+    "dev:api": "pnpm --filter api start:dev",
+    "build": "pnpm --filter web build && pnpm --filter api build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
