@@ -7,16 +7,18 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 });
 
-const DEV_ADMIN_USERNAME = "simone";
-const DEV_ADMIN_PASSWORD = "simone123"; // dev only — trocar antes de produção
+// Em produção, defina ADMIN_USERNAME e ADMIN_PASSWORD no ambiente antes de rodar o seed —
+// os valores abaixo são só um fallback conveniente pra desenvolvimento local.
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME ?? "simone";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? "simone123";
 
 async function main() {
-  const passwordHash = await bcrypt.hash(DEV_ADMIN_PASSWORD, 10);
+  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
   await prisma.admin.upsert({
-    where: { username: DEV_ADMIN_USERNAME },
+    where: { username: ADMIN_USERNAME },
     update: {},
     create: {
-      username: DEV_ADMIN_USERNAME,
+      username: ADMIN_USERNAME,
       passwordHash,
       email: process.env.ADMIN_EMAIL ?? "admin@simonemoura.com.br",
     },
@@ -89,9 +91,13 @@ async function main() {
   });
 
   console.log("Seed concluído.");
-  console.log(
-    `Login admin (dev): usuária "${DEV_ADMIN_USERNAME}" / senha "${DEV_ADMIN_PASSWORD}" — trocar antes de produção.`,
-  );
+  if (!process.env.ADMIN_PASSWORD) {
+    console.log(
+      `Login admin: usuária "${ADMIN_USERNAME}" / senha "${ADMIN_PASSWORD}" (padrão de dev — defina ADMIN_PASSWORD no ambiente antes do seed de produção).`,
+    );
+  } else {
+    console.log(`Login admin: usuária "${ADMIN_USERNAME}" — senha definida via ADMIN_PASSWORD.`);
+  }
 }
 
 main()
