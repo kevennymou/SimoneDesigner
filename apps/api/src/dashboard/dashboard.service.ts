@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { dateStringToUTCDate, todayISOInBusinessTZ } from '@simone/shared';
+import { todayISOInBusinessTZ } from '@simone/shared';
 import { AppointmentStatus } from '../../generated/prisma/client';
+import { getTopProcedures } from '../common/top-procedures';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
@@ -31,7 +32,7 @@ export class DashboardService {
           include: { client: true, service: true },
           orderBy: { startTime: 'asc' },
         }),
-        this.topProcedures(monthStart, monthEnd),
+        getTopProcedures(this.prisma, monthStart, monthEnd),
         this.clientStats(monthStart, monthEnd),
       ]);
 
@@ -68,27 +69,6 @@ export class DashboardService {
       revenue,
       avgTicket: completed.length ? Math.round(revenue / completed.length) : 0,
     };
-  }
-
-  private async topProcedures(from: Date, to: Date) {
-    const grouped = await this.prisma.appointment.groupBy({
-      by: ['serviceId'],
-      where: { date: { gte: from, lte: to }, status: { not: AppointmentStatus.CANCELLED } },
-      _count: { serviceId: true },
-    });
-    if (grouped.length === 0) return [];
-
-    const services = await this.prisma.service.findMany({
-      where: { id: { in: grouped.map((g) => g.serviceId) } },
-    });
-    const sorted = [...grouped].sort((a, b) => b._count.serviceId - a._count.serviceId).slice(0, 5);
-    const max = sorted[0]._count.serviceId;
-
-    return sorted.map((g) => ({
-      name: services.find((s) => s.id === g.serviceId)?.name ?? 'Procedimento removido',
-      count: g._count.serviceId,
-      pct: Math.round((g._count.serviceId / max) * 100),
-    }));
   }
 
   private async clientStats(from: Date, to: Date) {

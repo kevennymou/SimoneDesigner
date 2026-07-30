@@ -7,12 +7,14 @@ import type {
   ClientSummary,
   DashboardSummary,
   GalleryPhoto,
+  ReportResult,
   Service,
   Settings,
   SettingsAdmin,
   SlotsResponse,
   Testimonial,
   UpdateAppointmentPayload,
+  UpsertServicePayload,
   WaitlistPayload,
   WaitlistResult,
   WeeklyDay,
@@ -167,4 +169,50 @@ export function removeWaitlistEntry(id: string) {
 
 export function getSettingsAdmin(cookie?: string) {
   return request<SettingsAdmin>("/settings/admin", { cookie });
+}
+
+export function getServicesAdmin(cookie?: string) {
+  return request<Service[]>("/services/all", { cookie });
+}
+
+export function createService(payload: UpsertServicePayload) {
+  return request<Service>("/services", { method: "POST", body: JSON.stringify(payload) });
+}
+
+export function updateService(id: string, payload: Partial<UpsertServicePayload> & { active?: boolean }) {
+  return request<Service>(`/services/${id}`, { method: "PATCH", body: JSON.stringify(payload) });
+}
+
+export function deleteService(id: string) {
+  return request<{ ok: true }>(`/services/${id}`, { method: "DELETE" });
+}
+
+export function updateWeeklyAvailability(days: WeeklyDay[]) {
+  return request<WeeklyDay[]>("/availability/weekly", {
+    method: "PUT",
+    body: JSON.stringify({ days }),
+  });
+}
+
+export function createBlock(date: string, label: string) {
+  return request<BlockedDate>("/availability/blocks", {
+    method: "POST",
+    body: JSON.stringify({ date, label }),
+  });
+}
+
+export function removeBlock(id: string) {
+  return request<{ ok: true }>(`/availability/blocks/${id}`, { method: "DELETE" });
+}
+
+export function getReport(from: string, to: string, cookie?: string) {
+  return request<ReportResult>(`/reports?from=${from}&to=${to}`, { cookie });
+}
+
+export function reportCsvUrl(from: string, to: string): string {
+  return `${API_URL}/reports/export.csv?from=${from}&to=${to}`;
+}
+
+export function backupExportUrl(): string {
+  return `${API_URL}/backup/export`;
 }

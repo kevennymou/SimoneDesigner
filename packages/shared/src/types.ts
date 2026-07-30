@@ -198,3 +198,24 @@ export interface UpdateAppointmentPayload {
   status?: AppointmentStatus;
   cancelReason?: string;
 }
+
+export interface UpsertServicePayload {
+  name: string;
+  durationMin: number;
+  price: number | null;
+  order?: number;
+}
+
+export interface ReportResult {
+  from: string;
+  to: string;
+  revenue: number;
+  count: number;
+  avgTicket: number;
+  clientsServed: number;
+  noShows: number;
+  cancellations: number;
+  busiestHour: string | null;
+  topProcedures: Array<{ name: string; count: number; pct: number }>;
+  series: Array<{ label: string; revenue: number; count: number }>;
+}
