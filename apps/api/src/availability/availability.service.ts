@@ -8,7 +8,7 @@ import {
   timeToMinutes,
   todayISOInBusinessTZ,
   weekdayOf,
-} from '../common/date-utils';
+} from '@simone/shared';
 import { Prisma, WeeklyAvailability } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBlockDto } from './dto/create-block.dto';

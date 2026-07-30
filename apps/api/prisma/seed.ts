@@ -63,6 +63,18 @@ async function main() {
     });
   }
 
+  const hasTestimonial = await prisma.testimonial.findFirst();
+  if (!hasTestimonial) {
+    await prisma.testimonial.create({
+      data: {
+        author: 'Larissa A.',
+        text: 'Trabalho impecável e um carinho que faz toda a diferença. Sempre volto.',
+        rating: 5,
+        order: 0,
+      },
+    });
+  }
+
   await prisma.settings.upsert({
     where: { id: "singleton" },
     update: {},

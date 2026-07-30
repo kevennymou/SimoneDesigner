@@ -4,10 +4,14 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { normalizeWhatsApp } from '@simone/shared';
+import {
+  addMinutesToTime,
+  dateOnlyToISO,
+  dateStringToUTCDate,
+  normalizeWhatsApp,
+} from '@simone/shared';
 import { randomBytes } from 'node:crypto';
 import { AvailabilityService } from '../availability/availability.service';
-import { addMinutesToTime, dateOnlyToISO, dateStringToUTCDate } from '../common/date-utils';
 import {
   Appointment,
   AppointmentStatus,

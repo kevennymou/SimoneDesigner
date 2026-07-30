@@ -1,6 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { buildWhatsAppUrl, normalizeWhatsApp } from '@simone/shared';
-import { dateOnlyToISO, dateStringToUTCDate, formatDateBR } from '../common/date-utils';
+import {
+  buildWhatsAppUrl,
+  dateOnlyToISO,
+  dateStringToUTCDate,
+  formatDateBR,
+  normalizeWhatsApp,
+} from '@simone/shared';
 import { Client, Service, WaitlistEntry, WaitlistStatus } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWaitlistDto } from './dto/create-waitlist.dto';
