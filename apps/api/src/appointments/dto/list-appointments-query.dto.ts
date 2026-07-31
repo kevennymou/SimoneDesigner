@@ -1,5 +1,5 @@
 import { IsDateString, IsEnum, IsOptional } from 'class-validator';
-import { AppointmentStatus } from '../../../generated/prisma/client';
+import { AppointmentStatus } from '../../generated/prisma/client';
 
 export class ListAppointmentsQueryDto {
   @IsOptional()

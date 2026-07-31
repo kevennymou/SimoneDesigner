@@ -6,7 +6,7 @@ import {
   formatDateBR,
   normalizeWhatsApp,
 } from '@simone/shared';
-import { Client, Service, WaitlistEntry, WaitlistStatus } from '../../generated/prisma/client';
+import { Client, Service, WaitlistEntry, WaitlistStatus } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateWaitlistDto } from './dto/create-waitlist.dto';
 

@@ -9,7 +9,7 @@ import {
   todayISOInBusinessTZ,
   weekdayOf,
 } from '@simone/shared';
-import { Prisma, WeeklyAvailability } from '../../generated/prisma/client';
+import { Prisma, WeeklyAvailability } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateBlockDto } from './dto/create-block.dto';
 import { WeeklyDayDto } from './dto/weekly-day.dto';

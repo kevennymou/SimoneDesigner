@@ -1,5 +1,5 @@
 import { IsDateString, IsEnum, IsOptional, IsString, Matches } from 'class-validator';
-import { AppointmentStatus } from '../../../generated/prisma/client';
+import { AppointmentStatus } from '../../generated/prisma/client';
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 

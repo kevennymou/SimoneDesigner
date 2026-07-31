@@ -1,4 +1,4 @@
-import { AppointmentStatus } from '../../generated/prisma/client';
+import { AppointmentStatus } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 export async function getTopProcedures(

@@ -25,7 +25,7 @@ Thumbs.db
 !.vscode/extensions.json
 
 # prisma
-apps/api/generated/
+apps/api/src/generated/
 
 # misc
 *.tsbuildinfo

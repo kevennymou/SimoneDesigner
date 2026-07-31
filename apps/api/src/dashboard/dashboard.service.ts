@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { todayISOInBusinessTZ } from '@simone/shared';
-import { AppointmentStatus } from '../../generated/prisma/client';
+import { AppointmentStatus } from '../generated/prisma/client';
 import { getTopProcedures } from '../common/top-procedures';
 import { PrismaService } from '../prisma/prisma.service';
 

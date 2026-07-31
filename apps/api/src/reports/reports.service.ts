@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { dateOnlyToISO, dateStringToUTCDate } from '@simone/shared';
-import { AppointmentStatus, Prisma } from '../../generated/prisma/client';
+import { AppointmentStatus, Prisma } from '../generated/prisma/client';
 import { getTopProcedures } from '../common/top-procedures';
 import { PrismaService } from '../prisma/prisma.service';
 

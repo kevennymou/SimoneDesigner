@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { dateOnlyToISO } from '@simone/shared';
-import { AppointmentStatus } from '../../generated/prisma/client';
+import { AppointmentStatus } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
