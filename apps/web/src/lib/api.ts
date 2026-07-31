@@ -20,7 +20,14 @@ import type {
   WeeklyDay,
 } from "@simone/shared";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+// No servidor (Server Components), chama a API direto. No navegador, usa o caminho
+// relativo /api, que o next.config.ts proxeia pra API — assim o cookie de sessão
+// fica de primeira-parte (mesmo domínio da página), evitando bloqueio de cookie de
+// terceiro em navegadores modernos quando front e API estão em domínios diferentes.
+const API_URL =
+  typeof window === "undefined"
+    ? (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001")
+    : "/api";
 
 export class ApiError extends Error {
   status: number;
