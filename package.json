@@ -1,6 +1,7 @@
 {
   "name": "simone-moura",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "concurrently -n web,api -c blue,magenta \"pnpm --filter web dev\" \"pnpm --filter api start:dev\"",
     "dev:web": "pnpm --filter web dev",
