@@ -65,23 +65,6 @@ export interface SettingsAdmin extends Settings {
   adminEmail: string;
 }
 
-export interface WeeklyDay {
-  id: string;
-  weekday: number; // 0=domingo..6=sábado
-  isOpen: boolean;
-  startTime: string | null;
-  endTime: string | null;
-  breakStart: string | null;
-  breakEnd: string | null;
-  slotMinutes: number;
-}
-
-export interface BlockedDate {
-  id: string;
-  date: string;
-  label: string;
-}
-
 export interface SlotsResponse {
   date: string;
   open: boolean;

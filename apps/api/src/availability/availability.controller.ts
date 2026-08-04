@@ -1,50 +1,28 @@
-import {
-  Body,
-  Controller,
-  Delete,
-  Get,
-  Param,
-  Post,
-  Put,
-  Query,
-  UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Put, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AvailabilityService } from './availability.service';
-import { CreateBlockDto } from './dto/create-block.dto';
+import { SetDayAvailabilityDto } from './dto/set-day-availability.dto';
 import { SlotsQueryDto } from './dto/slots-query.dto';
-import { UpdateWeeklyDto } from './dto/update-weekly.dto';
 
 @Controller('availability')
 export class AvailabilityController {
   constructor(private readonly availability: AvailabilityService) {}
 
-  @Get('weekly')
-  getWeekly() {
-    return this.availability.getWeekly();
+  @Get('dates')
+  getAvailableDates() {
+    return this.availability.getAvailableDates();
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put('weekly')
-  updateWeekly(@Body() dto: UpdateWeeklyDto) {
-    return this.availability.updateWeekly(dto.days);
-  }
-
-  @Get('blocks')
-  getBlocks() {
-    return this.availability.getBlocks();
+  @Get('dates/:date')
+  getDayTimes(@Param('date') date: string) {
+    return this.availability.getDayTimes(date);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('blocks')
-  createBlock(@Body() dto: CreateBlockDto) {
-    return this.availability.createBlock(dto);
-  }
-
-  @UseGuards(JwtAuthGuard)
-  @Delete('blocks/:id')
-  removeBlock(@Param('id') id: string) {
-    return this.availability.removeBlock(id);
+  @Put('dates/:date')
+  setDayTimes(@Param('date') date: string, @Body() dto: SetDayAvailabilityDto) {
+    return this.availability.setDayTimes(date, dto);
   }
 
   @Get('slots')

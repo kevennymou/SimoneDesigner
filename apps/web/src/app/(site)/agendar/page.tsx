@@ -1,19 +1,17 @@
-import { getBlocks, getServices, getSettings, getWeeklyAvailability } from "@/lib/api";
+import { getAvailableDates, getServices, getSettings } from "@/lib/api";
 import { BookingWizard } from "@/components/booking/booking-wizard";
 
 export default async function AgendarPage() {
-  const [services, weekly, blocks, settings] = await Promise.all([
+  const [services, availableDates, settings] = await Promise.all([
     getServices(),
-    getWeeklyAvailability(),
-    getBlocks(),
+    getAvailableDates(),
     getSettings(),
   ]);
 
   return (
     <BookingWizard
       services={services}
-      weekly={weekly}
-      blocks={blocks}
+      availableDates={availableDates}
       whatsappNumber={settings.whatsapp}
     />
   );

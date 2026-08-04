@@ -18,7 +18,7 @@ const body = Jost({
 export const metadata: Metadata = {
   title: "Simone Moura | Nail Designer",
   description:
-    "Designer de unhas em gel em João Pessoa. Agende seu horário em poucos passos.",
+    "Designer de unhas em gel em Campina Grande. Agende seu horário em poucos passos.",
 };
 
 export default function RootLayout({

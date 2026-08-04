@@ -90,21 +90,10 @@ model WaitlistEntry {
   createdAt DateTime       @default(now())
 }
 
-model WeeklyAvailability {
-  id          String  @id @default(cuid())
-  weekday     Int     @unique // 0=domingo ... 6=sábado
-  isOpen      Boolean @default(false)
-  startTime   String? // "09:00"
-  endTime     String? // "18:00"
-  breakStart  String? // "12:00"
-  breakEnd    String? // "13:00"
-  slotMinutes Int     @default(30)
-}
-
-model BlockedDate {
+model DayAvailability {
   id    String   @id @default(cuid())
   date  DateTime @db.Date @unique
-  label String // "Feriado", "Folga", etc.
+  times String[] // ["09:00", "09:30", "14:00", ...] — horários que Simone marcou como disponíveis nessa data específica
 }
 
 model NotificationLog {
@@ -136,7 +125,7 @@ model Testimonial {
 model Settings {
   id           String  @id @default("singleton")
   businessName String  @default("Simone Moura")
-  bio          String  @default("Designer de unhas em gel em João Pessoa. Realço a sua beleza a cada detalhe.")
+  bio          String  @default("Designer de unhas em gel em Campina Grande. Realço a sua beleza a cada detalhe.")
   whatsapp     String
   instagram    String
   address      String?

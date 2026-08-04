@@ -39,29 +39,18 @@ async function main() {
     });
   }
 
-  // 0=domingo ... 6=sábado — atendimento Ter–Sáb, 9h–18h, intervalo 12h–13h
-  const weekly = [
-    { weekday: 0, isOpen: false },
-    { weekday: 1, isOpen: false },
-    { weekday: 2, isOpen: true },
-    { weekday: 3, isOpen: true },
-    { weekday: 4, isOpen: true },
-    { weekday: 5, isOpen: true },
-    { weekday: 6, isOpen: true },
-  ];
-  for (const w of weekly) {
-    await prisma.weeklyAvailability.upsert({
-      where: { weekday: w.weekday },
+  // Exemplo de disponibilidade nos próximos dias, só pra não deixar o dev local vazio —
+  // em produção Simone escolhe os horários de cada data pelo painel admin.
+  const exampleTimes = ["09:00", "09:30", "10:00", "14:00", "14:30", "15:00", "16:00"];
+  const today = new Date();
+  for (let i = 1; i <= 5; i++) {
+    const d = new Date(
+      Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + i),
+    );
+    await prisma.dayAvailability.upsert({
+      where: { date: d },
       update: {},
-      create: {
-        weekday: w.weekday,
-        isOpen: w.isOpen,
-        startTime: w.isOpen ? "09:00" : null,
-        endTime: w.isOpen ? "18:00" : null,
-        breakStart: w.isOpen ? "12:00" : null,
-        breakEnd: w.isOpen ? "13:00" : null,
-        slotMinutes: 30,
-      },
+      create: { date: d, times: exampleTimes },
     });
   }
 
@@ -83,7 +72,7 @@ async function main() {
     create: {
       id: "singleton",
       businessName: "Simone Moura",
-      bio: "Designer de unhas em gel em João Pessoa. Realço a sua beleza a cada detalhe.",
+      bio: "Designer de unhas em gel em Campina Grande. Realço a sua beleza a cada detalhe.",
       whatsapp: process.env.WHATSAPP_NUMBER ?? "5583998559075",
       instagram: "simonemoura.nails",
       adminEmail: process.env.ADMIN_EMAIL ?? "admin@simonemoura.com.br",

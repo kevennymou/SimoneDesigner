@@ -1,7 +1,6 @@
 import type {
   Admin,
   AppointmentResult,
-  BlockedDate,
   BookingPayload,
   ClientDetail,
   ClientSummary,
@@ -17,7 +16,6 @@ import type {
   UpsertServicePayload,
   WaitlistPayload,
   WaitlistResult,
-  WeeklyDay,
 } from "@simone/shared";
 
 // No servidor (Server Components), chama a API direto. No navegador, usa o caminho
@@ -75,12 +73,8 @@ export function getServices() {
   return request<Service[]>("/services");
 }
 
-export function getWeeklyAvailability() {
-  return request<WeeklyDay[]>("/availability/weekly");
-}
-
-export function getBlocks() {
-  return request<BlockedDate[]>("/availability/blocks");
+export function getAvailableDates() {
+  return request<string[]>("/availability/dates");
 }
 
 export function getSlots(date: string, serviceId?: string) {
@@ -194,22 +188,15 @@ export function deleteService(id: string) {
   return request<{ ok: true }>(`/services/${id}`, { method: "DELETE" });
 }
 
-export function updateWeeklyAvailability(days: WeeklyDay[]) {
-  return request<WeeklyDay[]>("/availability/weekly", {
+export function getDayTimes(date: string, cookie?: string) {
+  return request<string[]>(`/availability/dates/${date}`, { cookie });
+}
+
+export function setDayTimes(date: string, times: string[]) {
+  return request<string[]>(`/availability/dates/${date}`, {
     method: "PUT",
-    body: JSON.stringify({ days }),
+    body: JSON.stringify({ times }),
   });
-}
-
-export function createBlock(date: string, label: string) {
-  return request<BlockedDate>("/availability/blocks", {
-    method: "POST",
-    body: JSON.stringify({ date, label }),
-  });
-}
-
-export function removeBlock(id: string) {
-  return request<{ ok: true }>(`/availability/blocks/${id}`, { method: "DELETE" });
 }
 
 export function getReport(from: string, to: string, cookie?: string) {

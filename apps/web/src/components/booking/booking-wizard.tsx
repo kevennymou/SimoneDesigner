@@ -5,11 +5,9 @@ import { useRouter } from "next/navigation";
 import {
   formatDateLongPtBR,
   type AppointmentResult,
-  type BlockedDate,
   type Service,
   type Slot,
   type WaitlistResult,
-  type WeeklyDay,
 } from "@simone/shared";
 import { ApiError, createAppointment, getSlots, joinWaitlist } from "@/lib/api";
 import { CalendarStep } from "./calendar-step";
@@ -120,12 +118,11 @@ function canAdvance(state: WizardState): boolean {
 
 interface BookingWizardProps {
   services: Service[];
-  weekly: WeeklyDay[];
-  blocks: BlockedDate[];
+  availableDates: string[];
   whatsappNumber: string;
 }
 
-export function BookingWizard({ services, weekly, blocks, whatsappNumber }: BookingWizardProps) {
+export function BookingWizard({ services, availableDates, whatsappNumber }: BookingWizardProps) {
   const router = useRouter();
   const [state, dispatch] = useReducer(reducer, initialState);
   const [slots, setSlots] = useState<Slot[] | null>(null);
@@ -245,8 +242,7 @@ export function BookingWizard({ services, weekly, blocks, whatsappNumber }: Book
     >
       {state.step === "date" && (
         <CalendarStep
-          weekly={weekly}
-          blocks={blocks}
+          availableDates={availableDates}
           monthOffset={state.monthOffset}
           selectedDate={state.date}
           onSelectDate={(date) => dispatch({ type: "SELECT_DATE", date })}

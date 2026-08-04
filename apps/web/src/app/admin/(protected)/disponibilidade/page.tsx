@@ -2,62 +2,104 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatDateBR, type BlockedDate, type WeeklyDay } from "@simone/shared";
-import {
-  ApiError,
-  createBlock,
-  getBlocks,
-  getWeeklyAvailability,
-  removeBlock,
-  updateWeeklyAvailability,
-} from "@/lib/api";
-import { AddBlockDialog } from "@/components/admin/add-block-dialog";
-import { Switch } from "@/components/ui/switch";
+import { formatDateLongPtBR, todayISOInBusinessTZ } from "@simone/shared";
+import { ApiError, getAvailableDates, getDayTimes, setDayTimes } from "@/lib/api";
+import { MONTH_NAMES } from "@/lib/calendar";
+import { capitalizeFirst } from "@/lib/schedule";
 
-const WEEKDAY_NAMES = [
-  "Domingo",
-  "Segunda-feira",
-  "Terça-feira",
-  "Quarta-feira",
-  "Quinta-feira",
-  "Sexta-feira",
-  "Sábado",
-];
-const SLOT_OPTIONS = [15, 30, 45, 60];
+const WEEKDAY_LETTERS = ["D", "S", "T", "Q", "Q", "S", "S"];
+
+function buildTimeOptions(): string[] {
+  const out: string[] = [];
+  for (let m = 7 * 60; m <= 21 * 60; m += 30) {
+    const h = Math.floor(m / 60)
+      .toString()
+      .padStart(2, "0");
+    const min = (m % 60).toString().padStart(2, "0");
+    out.push(`${h}:${min}`);
+  }
+  return out;
+}
+const TIME_OPTIONS = buildTimeOptions();
+
+interface CalendarCell {
+  date: string;
+  day: number;
+  disabled: boolean;
+  hasData: boolean;
+}
+
+function buildAdminCalendar(
+  year: number,
+  month: number,
+  datesWithData: Set<string>,
+  todayISO: string,
+): (CalendarCell | null)[] {
+  const firstDow = new Date(Date.UTC(year, month, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const cells: (CalendarCell | null)[] = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    cells.push({ date, day, disabled: date < todayISO, hasData: datesWithData.has(date) });
+  }
+  return cells;
+}
 
 export default function AvailabilityPage() {
-  const [weekly, setWeekly] = useState<WeeklyDay[] | null>(null);
-  const [blocks, setBlocks] = useState<BlockedDate[] | null>(null);
-  const [slotMinutes, setSlotMinutes] = useState(30);
+  const today = todayISOInBusinessTZ();
+  const [monthOffset, setMonthOffset] = useState(0);
+  const [datesWithData, setDatesWithData] = useState<Set<string> | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  const [loadingTimes, setLoadingTimes] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [savedJustNow, setSavedJustNow] = useState(false);
-  const [addingBlock, setAddingBlock] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    (async () => {
-      const [w, b] = await Promise.all([getWeeklyAvailability(), getBlocks()]);
-      const sorted = [...w].sort((a, b2) => a.weekday - b2.weekday);
-      setWeekly(sorted);
-      setBlocks(b);
-      const anyOpen = sorted.find((d) => d.isOpen);
-      if (anyOpen) setSlotMinutes(anyOpen.slotMinutes);
-    })();
+    getAvailableDates().then((dates) => setDatesWithData(new Set(dates)));
   }, []);
 
-  function updateDay(weekday: number, patch: Partial<WeeklyDay>) {
-    setWeekly((prev) => prev?.map((d) => (d.weekday === weekday ? { ...d, ...patch } : d)) ?? null);
+  async function handleSelectDate(date: string) {
+    setSelectedDate(date);
     setSavedJustNow(false);
+    setError(null);
+    setLoadingTimes(true);
+    try {
+      const times = await getDayTimes(date);
+      setChecked(new Set(times));
+    } catch {
+      setChecked(new Set());
+      setError("Não foi possível carregar os horários dessa data.");
+    } finally {
+      setLoadingTimes(false);
+    }
+  }
+
+  function toggleTime(time: string) {
+    setSavedJustNow(false);
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(time)) next.delete(time);
+      else next.add(time);
+      return next;
+    });
   }
 
   async function handleSave() {
-    if (!weekly) return;
+    if (!selectedDate) return;
     setSaving(true);
     setError(null);
     try {
-      const payload = weekly.map((d) => ({ ...d, slotMinutes }));
-      const updated = await updateWeeklyAvailability(payload);
-      setWeekly([...updated].sort((a, b) => a.weekday - b.weekday));
+      const times = [...checked];
+      await setDayTimes(selectedDate, times);
+      setDatesWithData((prev) => {
+        const next = new Set(prev ?? []);
+        if (times.length > 0) next.add(selectedDate);
+        else next.delete(selectedDate);
+        return next;
+      });
       setSavedJustNow(true);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Não foi possível salvar.");
@@ -66,24 +108,11 @@ export default function AvailabilityPage() {
     }
   }
 
-  async function handleAddBlock(date: string, label: string) {
-    const block = await createBlock(date, label);
-    setBlocks((prev) => [...(prev ?? []), block].sort((a, b) => a.date.localeCompare(b.date)));
-    setAddingBlock(false);
-  }
-
-  async function handleRemoveBlock(id: string) {
-    await removeBlock(id);
-    setBlocks((prev) => prev?.filter((b) => b.id !== id) ?? null);
-  }
-
-  if (!weekly || !blocks) {
-    return (
-      <div className="px-5 py-6 sm:px-8 lg:px-10 lg:py-8">
-        <p className="text-sm text-muted-foreground">Carregando...</p>
-      </div>
-    );
-  }
+  const [todayYear, todayMonth] = today.split("-").map(Number);
+  const base = new Date(Date.UTC(todayYear, todayMonth - 1 + monthOffset, 1));
+  const year = base.getUTCFullYear();
+  const month = base.getUTCMonth();
+  const cells = datesWithData ? buildAdminCalendar(year, month, datesWithData, today) : null;
 
   return (
     <div className="px-5 py-6 sm:px-8 lg:px-10 lg:py-8">
@@ -98,157 +127,118 @@ export default function AvailabilityPage() {
         <h1 className="font-heading text-xl text-foreground">Disponibilidade</h1>
       </div>
 
-      <div className="mb-2.5 text-[11px] tracking-wide text-muted-foreground uppercase">
-        Dias de atendimento
-      </div>
-      <div className="flex flex-col gap-2 lg:max-w-lg">
-        {weekly.map((d) => (
-          <div key={d.weekday} className="border-border bg-background rounded-2xl border px-4 py-3.5">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-foreground">{WEEKDAY_NAMES[d.weekday]}</span>
-              <Switch
-                checked={d.isOpen}
-                onCheckedChange={(checked: boolean) =>
-                  updateDay(d.weekday, {
-                    isOpen: checked,
-                    startTime: checked ? (d.startTime ?? "09:00") : null,
-                    endTime: checked ? (d.endTime ?? "18:00") : null,
-                    breakStart: checked ? d.breakStart : null,
-                    breakEnd: checked ? d.breakEnd : null,
-                  })
-                }
-              />
-            </div>
-            {d.isOpen && (
-              <div className="mt-3 grid grid-cols-2 gap-2.5">
-                <TimeField
-                  label="Abre"
-                  value={d.startTime ?? ""}
-                  onChange={(v) => updateDay(d.weekday, { startTime: v })}
-                />
-                <TimeField
-                  label="Fecha"
-                  value={d.endTime ?? ""}
-                  onChange={(v) => updateDay(d.weekday, { endTime: v })}
-                />
-                <TimeField
-                  label="Intervalo início"
-                  value={d.breakStart ?? ""}
-                  onChange={(v) => updateDay(d.weekday, { breakStart: v || null })}
-                  optional
-                />
-                <TimeField
-                  label="Intervalo fim"
-                  value={d.breakEnd ?? ""}
-                  onChange={(v) => updateDay(d.weekday, { breakEnd: v || null })}
-                  optional
-                />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
+      <p className="mb-4 text-sm text-muted-foreground">
+        Toque numa data pra escolher quais horários ficam disponíveis pra agendamento nela.
+      </p>
 
-      <div className="mt-5 lg:max-w-lg">
-        <label className="text-[11px] tracking-wide text-muted-foreground uppercase">
-          Duração de cada horário
-        </label>
-        <select
-          value={slotMinutes}
-          onChange={(e) => {
-            setSlotMinutes(Number(e.target.value));
-            setSavedJustNow(false);
-          }}
-          className="border-border mt-1.5 w-full rounded-xl border bg-background px-4 py-3 text-sm text-foreground"
-        >
-          {SLOT_OPTIONS.map((m) => (
-            <option key={m} value={m}>
-              {m} minutos
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {error && (
-        <p className="text-destructive mt-4 text-sm" role="alert">
-          {error}
-        </p>
-      )}
-
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={saving}
-        className="bg-primary text-primary-foreground mt-5 w-full max-w-lg rounded-xl py-3.5 text-sm font-medium disabled:opacity-60"
-      >
-        {saving ? "Salvando..." : savedJustNow ? "Salvo ✓" : "Salvar horários"}
-      </button>
-
-      <div className="mt-8 mb-2.5 text-[11px] tracking-wide text-muted-foreground uppercase">
-        Feriados e bloqueios
-      </div>
-      <div className="flex flex-col gap-2 lg:max-w-lg">
-        {blocks.map((b) => (
-          <div
-            key={b.id}
-            className="bg-secondary flex items-center justify-between rounded-xl px-4 py-3"
-          >
-            <span className="text-sm text-foreground">
-              {b.label} · {formatDateBR(b.date)}
+      {!cells ? (
+        <p className="text-sm text-muted-foreground">Carregando...</p>
+      ) : (
+        <div className="lg:max-w-md">
+          <div className="mb-3 flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setMonthOffset((o) => Math.max(0, o - 1))}
+              disabled={monthOffset === 0}
+              aria-label="Mês anterior"
+              className="bg-secondary text-primary flex h-8 w-8 items-center justify-center rounded-full disabled:opacity-30"
+            >
+              ‹
+            </button>
+            <span className="font-heading text-lg text-foreground">
+              {MONTH_NAMES[month]} {year}
             </span>
             <button
               type="button"
-              onClick={() => handleRemoveBlock(b.id)}
-              className="text-destructive text-xs"
+              onClick={() => setMonthOffset((o) => o + 1)}
+              aria-label="Próximo mês"
+              className="bg-secondary text-primary flex h-8 w-8 items-center justify-center rounded-full"
             >
-              remover
+              ›
             </button>
           </div>
-        ))}
-        {blocks.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nenhum bloqueio cadastrado.</p>
-        )}
-      </div>
-      <button
-        type="button"
-        onClick={() => setAddingBlock(true)}
-        className="border-border mt-3 w-full max-w-lg rounded-xl border py-3 text-sm text-foreground"
-      >
-        + Feriado / folga / bloqueio
-      </button>
 
-      <AddBlockDialog
-        open={addingBlock}
-        onClose={() => setAddingBlock(false)}
-        onConfirm={handleAddBlock}
-      />
-    </div>
-  );
-}
+          <div className="mb-1.5 grid grid-cols-7 gap-1">
+            {WEEKDAY_LETTERS.map((l, i) => (
+              <div key={i} className="text-center text-[10px] tracking-wide text-muted-foreground">
+                {l}
+              </div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {cells.map((cell, i) =>
+              cell === null ? (
+                <div key={`empty-${i}`} />
+              ) : (
+                <button
+                  key={cell.date}
+                  type="button"
+                  disabled={cell.disabled}
+                  onClick={() => handleSelectDate(cell.date)}
+                  className={`relative aspect-square rounded-lg text-sm ${
+                    selectedDate === cell.date
+                      ? "bg-primary text-primary-foreground"
+                      : cell.disabled
+                        ? "text-muted-foreground/50"
+                        : "bg-secondary text-foreground hover:opacity-80"
+                  }`}
+                >
+                  {cell.day}
+                  {cell.hasData && selectedDate !== cell.date && (
+                    <span className="bg-gold absolute bottom-1 left-1/2 h-1 w-1 -translate-x-1/2 rounded-full" />
+                  )}
+                </button>
+              ),
+            )}
+          </div>
+        </div>
+      )}
 
-function TimeField({
-  label,
-  value,
-  onChange,
-  optional,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  optional?: boolean;
-}) {
-  return (
-    <div>
-      <label className="text-[10px] text-muted-foreground">
-        {label}
-        {optional ? " (opcional)" : ""}
-      </label>
-      <input
-        type="time"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="border-border mt-0.5 w-full rounded-lg border bg-background px-2.5 py-2 text-xs"
-      />
+      {selectedDate && (
+        <div className="border-border bg-background mt-6 rounded-2xl border px-4 py-4 lg:max-w-md">
+          <p className="font-heading text-base text-foreground">
+            {capitalizeFirst(formatDateLongPtBR(selectedDate))}
+          </p>
+
+          {loadingTimes ? (
+            <p className="mt-3 text-sm text-muted-foreground">Carregando horários...</p>
+          ) : (
+            <>
+              <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-5">
+                {TIME_OPTIONS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => toggleTime(t)}
+                    className={`rounded-lg py-2 text-xs ${
+                      checked.has(t)
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-secondary text-foreground hover:opacity-80"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+
+              {error && (
+                <p className="text-destructive mt-3 text-sm" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={saving}
+                className="bg-primary text-primary-foreground mt-4 w-full rounded-xl py-3.5 text-sm font-medium disabled:opacity-60"
+              >
+                {saving ? "Salvando..." : savedJustNow ? "Salvo ✓" : "Salvar horários"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

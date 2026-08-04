@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   dateOnlyToISO,
   dateStringToUTCDate,
@@ -7,110 +7,70 @@ import {
   rangesOverlap,
   timeToMinutes,
   todayISOInBusinessTZ,
-  weekdayOf,
 } from '@simone/shared';
-import { Prisma, WeeklyAvailability } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateBlockDto } from './dto/create-block.dto';
-import { WeeklyDayDto } from './dto/weekly-day.dto';
+import { SetDayAvailabilityDto } from './dto/set-day-availability.dto';
 
 interface DayStatus {
   open: boolean;
   reason: string | null;
-  weekly: WeeklyAvailability | null;
+  times: string[];
 }
 
 @Injectable()
 export class AvailabilityService {
   constructor(private readonly prisma: PrismaService) {}
 
-  getWeekly() {
-    return this.prisma.weeklyAvailability.findMany({
-      orderBy: { weekday: 'asc' },
-    });
-  }
-
-  async updateWeekly(days: WeeklyDayDto[]) {
-    await this.prisma.$transaction(
-      days.map((d) =>
-        this.prisma.weeklyAvailability.upsert({
-          where: { weekday: d.weekday },
-          update: {
-            isOpen: d.isOpen,
-            startTime: d.isOpen ? (d.startTime ?? null) : null,
-            endTime: d.isOpen ? (d.endTime ?? null) : null,
-            breakStart: d.isOpen ? (d.breakStart ?? null) : null,
-            breakEnd: d.isOpen ? (d.breakEnd ?? null) : null,
-            slotMinutes: d.slotMinutes ?? 30,
-          },
-          create: {
-            weekday: d.weekday,
-            isOpen: d.isOpen,
-            startTime: d.isOpen ? (d.startTime ?? null) : null,
-            endTime: d.isOpen ? (d.endTime ?? null) : null,
-            breakStart: d.isOpen ? (d.breakStart ?? null) : null,
-            breakEnd: d.isOpen ? (d.breakEnd ?? null) : null,
-            slotMinutes: d.slotMinutes ?? 30,
-          },
-        }),
-      ),
-    );
-    return this.getWeekly();
-  }
-
-  async getBlocks() {
-    const blocks = await this.prisma.blockedDate.findMany({
+  /** Datas (>= hoje) que têm pelo menos um horário disponível — pro calendário público e pra visão geral do admin. */
+  async getAvailableDates(): Promise<string[]> {
+    const rows = await this.prisma.dayAvailability.findMany({
+      where: { date: { gte: dateStringToUTCDate(todayISOInBusinessTZ()) } },
+      select: { date: true, times: true },
       orderBy: { date: 'asc' },
     });
-    return blocks.map((b) => ({
-      id: b.id,
-      date: dateOnlyToISO(b.date),
-      label: b.label,
-    }));
+    return rows.filter((r) => r.times.length > 0).map((r) => dateOnlyToISO(r.date));
   }
 
-  async createBlock(dto: CreateBlockDto) {
-    try {
-      const block = await this.prisma.blockedDate.create({
-        data: { date: dateStringToUTCDate(dto.date), label: dto.label },
+  async getDayTimes(dateStr: string): Promise<string[]> {
+    const row = await this.prisma.dayAvailability.findUnique({
+      where: { date: dateStringToUTCDate(dateStr) },
+    });
+    return row?.times.sort() ?? [];
+  }
+
+  async setDayTimes(dateStr: string, dto: SetDayAvailabilityDto): Promise<string[]> {
+    const times = [...new Set(dto.times)].sort();
+    if (times.length === 0) {
+      await this.prisma.dayAvailability.deleteMany({
+        where: { date: dateStringToUTCDate(dateStr) },
       });
-      return { id: block.id, date: dateOnlyToISO(block.date), label: block.label };
-    } catch (err) {
-      if (
-        err instanceof Prisma.PrismaClientKnownRequestError &&
-        err.code === 'P2002'
-      ) {
-        throw new ConflictException('Já existe um bloqueio nessa data.');
-      }
-      throw err;
+      return [];
     }
-  }
-
-  async removeBlock(id: string) {
-    try {
-      await this.prisma.blockedDate.delete({ where: { id } });
-    } catch {
-      throw new NotFoundException('Bloqueio não encontrado.');
-    }
-    return { ok: true };
+    const row = await this.prisma.dayAvailability.upsert({
+      where: { date: dateStringToUTCDate(dateStr) },
+      update: { times },
+      create: { date: dateStringToUTCDate(dateStr), times },
+    });
+    return row.times.sort();
   }
 
   async getSlots(dateStr: string, serviceId?: string) {
     const status = await this.getDayStatus(dateStr);
-    if (!status.open || !status.weekly) {
+    if (!status.open) {
       return { date: dateStr, open: false, reason: status.reason, slots: [] };
     }
 
     const duration = await this.resolveDuration(serviceId);
-    const candidates = this.buildCandidates(status.weekly, duration);
     const busy = await this.fetchBusyRanges(dateStr);
 
     const today = todayISOInBusinessTZ();
     const isToday = dateStr === today;
     const nowMinutes = isToday ? nowMinutesInBusinessTZ() : -1;
 
-    const slots = candidates
+    const slots = status.times
+      .map(timeToMinutes)
       .filter((startMin) => !isToday || startMin > nowMinutes)
+      .sort((a, b) => a - b)
       .map((startMin) => ({
         time: minutesToTime(startMin),
         available: !busy.some(([bStart, bEnd]) =>
@@ -128,8 +88,8 @@ export class AvailabilityService {
     excludeAppointmentId?: string,
   ): Promise<{ free: boolean; reason?: string }> {
     const status = await this.getDayStatus(dateStr);
-    if (!status.open || !status.weekly) {
-      return { free: false, reason: status.reason ?? undefined };
+    if (!status.open || !status.times.includes(startTime)) {
+      return { free: false, reason: status.reason ?? 'Esse horário não está disponível.' };
     }
 
     const startMin = timeToMinutes(startTime);
@@ -138,20 +98,6 @@ export class AvailabilityService {
     const today = todayISOInBusinessTZ();
     if (dateStr === today && startMin <= nowMinutesInBusinessTZ()) {
       return { free: false, reason: 'Esse horário já passou.' };
-    }
-
-    const openStart = timeToMinutes(status.weekly.startTime!);
-    const openEnd = timeToMinutes(status.weekly.endTime!);
-    if (startMin < openStart || endMin > openEnd) {
-      return { free: false, reason: 'Fora do horário de atendimento.' };
-    }
-
-    if (status.weekly.breakStart && status.weekly.breakEnd) {
-      const breakStart = timeToMinutes(status.weekly.breakStart);
-      const breakEnd = timeToMinutes(status.weekly.breakEnd);
-      if (rangesOverlap(startMin, endMin, breakStart, breakEnd)) {
-        return { free: false, reason: 'Esse horário cai no intervalo.' };
-      }
     }
 
     const busy = await this.fetchBusyRanges(dateStr, excludeAppointmentId);
@@ -166,27 +112,19 @@ export class AvailabilityService {
   }
 
   private async getDayStatus(dateStr: string): Promise<DayStatus> {
-    const weekday = weekdayOf(dateStr);
-    const weekly = await this.prisma.weeklyAvailability.findUnique({
-      where: { weekday },
-    });
-    if (!weekly?.isOpen || !weekly.startTime || !weekly.endTime) {
-      return { open: false, reason: 'Fechado neste dia da semana.', weekly: null };
-    }
-
-    const blocked = await this.prisma.blockedDate.findUnique({
-      where: { date: dateStringToUTCDate(dateStr) },
-    });
-    if (blocked) {
-      return { open: false, reason: blocked.label, weekly: null };
-    }
-
     const today = todayISOInBusinessTZ();
     if (dateStr < today) {
-      return { open: false, reason: 'Data no passado.', weekly: null };
+      return { open: false, reason: 'Data no passado.', times: [] };
     }
 
-    return { open: true, reason: null, weekly };
+    const row = await this.prisma.dayAvailability.findUnique({
+      where: { date: dateStringToUTCDate(dateStr) },
+    });
+    if (!row || row.times.length === 0) {
+      return { open: false, reason: 'Sem horários disponíveis nesta data.', times: [] };
+    }
+
+    return { open: true, reason: null, times: row.times };
   }
 
   private async fetchBusyRanges(
@@ -204,27 +142,6 @@ export class AvailabilityService {
     return appointments.map(
       (a) => [timeToMinutes(a.startTime), timeToMinutes(a.endTime)] as const,
     );
-  }
-
-  private buildCandidates(weekly: WeeklyAvailability, duration: number): number[] {
-    const start = timeToMinutes(weekly.startTime!);
-    const end = timeToMinutes(weekly.endTime!);
-    const breakStart = weekly.breakStart ? timeToMinutes(weekly.breakStart) : null;
-    const breakEnd = weekly.breakEnd ? timeToMinutes(weekly.breakEnd) : null;
-    const step = weekly.slotMinutes || 30;
-
-    const out: number[] = [];
-    for (let t = start; t + duration <= end; t += step) {
-      if (
-        breakStart !== null &&
-        breakEnd !== null &&
-        rangesOverlap(t, t + duration, breakStart, breakEnd)
-      ) {
-        continue;
-      }
-      out.push(t);
-    }
-    return out;
   }
 
   private async resolveDuration(serviceId?: string): Promise<number> {

@@ -1,13 +1,6 @@
-import {
-  getGalleryPhotos,
-  getServices,
-  getSettings,
-  getTestimonials,
-  getWeeklyAvailability,
-} from "@/lib/api";
+import { getGalleryPhotos, getServices, getSettings, getTestimonials } from "@/lib/api";
 import { GallerySection } from "@/components/site/gallery-section";
 import { Hero } from "@/components/site/hero";
-import { HoursSection } from "@/components/site/hours-section";
 import { LocationSection } from "@/components/site/location-section";
 import { ServicesSection } from "@/components/site/services-section";
 import { SiteFooter } from "@/components/site/site-footer";
@@ -19,7 +12,6 @@ export default async function HomePage() {
     data = await Promise.all([
       getSettings(),
       getServices(),
-      getWeeklyAvailability(),
       getGalleryPhotos(),
       getTestimonials(),
     ]);
@@ -36,13 +28,12 @@ export default async function HomePage() {
     );
   }
 
-  const [settings, services, weekly, gallery, testimonials] = data;
+  const [settings, services, gallery, testimonials] = data;
 
   return (
     <main className="pb-4">
       <Hero settings={settings} />
       <ServicesSection services={services} />
-      <HoursSection weekly={weekly} />
       <GallerySection photos={gallery} />
       <TestimonialsSection testimonials={testimonials} />
       <LocationSection settings={settings} />

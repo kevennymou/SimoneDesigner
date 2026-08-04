@@ -1,14 +1,12 @@
 "use client";
 
-import type { BlockedDate, WeeklyDay } from "@simone/shared";
 import { todayISOInBusinessTZ } from "@simone/shared";
 import { buildCalendarDays, MONTH_NAMES } from "@/lib/calendar";
 
 const WEEKDAY_LETTERS = ["D", "S", "T", "Q", "Q", "S", "S"];
 
 interface CalendarStepProps {
-  weekly: WeeklyDay[];
-  blocks: BlockedDate[];
+  availableDates: string[];
   monthOffset: number;
   selectedDate: string | null;
   onSelectDate: (date: string) => void;
@@ -16,8 +14,7 @@ interface CalendarStepProps {
 }
 
 export function CalendarStep({
-  weekly,
-  blocks,
+  availableDates,
   monthOffset,
   selectedDate,
   onSelectDate,
@@ -29,7 +26,7 @@ export function CalendarStep({
   const year = base.getUTCFullYear();
   const month = base.getUTCMonth();
 
-  const days = buildCalendarDays(year, month, weekly, blocks, today);
+  const days = buildCalendarDays(year, month, availableDates, today);
 
   return (
     <div>

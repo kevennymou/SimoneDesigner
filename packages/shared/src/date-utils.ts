@@ -10,10 +10,6 @@ export function dateOnlyToISO(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
 
-export function weekdayOf(dateStr: string): number {
-  return dateStringToUTCDate(dateStr).getUTCDay();
-}
-
 export function todayISOInBusinessTZ(): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: BUSINESS_TIMEZONE,
