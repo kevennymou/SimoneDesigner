@@ -48,7 +48,7 @@ export function Hero({ settings }: HeroProps) {
               </Link>
               <div className="flex gap-3">
                 <a
-                  href="https://instagram.com"
+                  href={`https://www.instagram.com/${settings.instagram}/`}
                   target="_blank"
                   rel="noreferrer"
                   className="flex-1 border border-primary-foreground/40 px-5 py-3.5 text-center text-xs tracking-wide sm:flex-none"

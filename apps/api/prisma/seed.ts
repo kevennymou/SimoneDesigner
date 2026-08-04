@@ -74,7 +74,7 @@ async function main() {
       businessName: "Simone Moura",
       bio: "Designer de unhas em gel em Campina Grande. Realço a sua beleza a cada detalhe.",
       whatsapp: process.env.WHATSAPP_NUMBER ?? "5583998559075",
-      instagram: "simonemoura.nails",
+      instagram: "simonenailscg",
       adminEmail: process.env.ADMIN_EMAIL ?? "admin@simonemoura.com.br",
     },
   });
